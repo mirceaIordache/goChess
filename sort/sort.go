@@ -1,22 +1,25 @@
 package sort
 
 import (
-	"fmt"
-	//	"runtime"
-
 	. "github.com/mirceaIordache/goChess/attack"
 	. "github.com/mirceaIordache/goChess/common"
+	. "github.com/mirceaIordache/goChess/evaluation"
 	. "github.com/mirceaIordache/goChess/moveGenerator"
 )
 
 func SortMoves(board ChessBoard, list *MoveList) {
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s", ToEPD(board))
 	side := board.Side
 	xside := 1 ^ side
 	enemyPawns := board.Board[xside][Pawn]
 	iter := list
 	cboard := GenerateCBoard(board)
 
+	baseEval := Evaluate(-Mate, Mate, board)
+
 	for iter.Next != nil {
+		iter.Value.Score = baseEval
 		from := MoveFrom(iter.Value.Move)
 		to := MoveTo(iter.Value.Move)
 
@@ -33,10 +36,14 @@ func SortMoves(board ChessBoard, list *MoveList) {
 
 		iter = iter.Next
 	}
+
+	ChessLogger.Info("Exiting")
 }
 
 func SortCaptures(board ChessBoard, list *MoveList) {
 	/* Assign scores for captures only, no sorting */
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s", ToEPD(board))
 	iter := list
 	for iter.Next != nil {
 		cboard := GenerateCBoard(board)
@@ -53,48 +60,44 @@ func SortCaptures(board ChessBoard, list *MoveList) {
 		}
 		iter = iter.Next
 	}
+	ChessLogger.Info("Exiting")
 }
 
-func PickBest(head **MoveList) Move {
+func PickBest(head *MoveList) Move {
+	ChessLogger.Info("Entering")
 	var prevInList *MoveList = nil
 	var prevBest *MoveList = nil
-	iter := *head
-	best := iter.Value.Score
+	iter := head
 	bestMove := iter
+	prevInList = iter
 
-	for iter.Next != nil {
-
-		if iter.Next == iter {
-			fmt.Println("Proof: ", iter.Next.Value)
-			panic("Circular")
-		}
+	if iter.Next != nil {
 		iter = iter.Next
 	}
-	iter = *head
-	prevInList = iter
-	iter = iter.Next
+
 	for iter.Next != nil {
-		if iter.Value.Score > best {
+		if iter == iter.Next {
+			ChessLogger.Error("List iter value: %d", iter.Value)
+			ChessLogger.Panic("List is recursive!!!")
+		}
+		if iter.Value.Score > bestMove.Value.Score {
 			bestMove = iter
-			best = iter.Value.Score
 			prevBest = prevInList
 		}
 		prevInList = iter
 		iter = iter.Next
 	}
-
-	if bestMove != *head && bestMove != (*head).Next {
-		tmp := (*head).Next
-		(*head).Next = bestMove.Next
+	ChessLogger.Info("Exited the search loop")
+	if bestMove != head {
+		tmp := head.Next
+		head.Next = bestMove.Next
 		bestMove.Next = tmp
-		prevBest.Next = *head
-		*head = bestMove
-	} else if bestMove == (*head).Next {
-		(*head).Next = bestMove.Next
-		bestMove.Next = *head
-		*head = bestMove
+		prevBest.Next = head
+		head = bestMove
 	}
 
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", bestMove.Value)
 	return bestMove.Value
 
 }

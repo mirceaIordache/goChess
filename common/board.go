@@ -1,8 +1,12 @@
 package common
 
-const MaxPlyDepth = 10
+import "github.com/op/go-logging"
+
+const MaxPlyDepth = 20
 
 type BitBoard uint64
+
+var ChessLogger *logging.Logger
 
 type ChessBoard struct {
 	Board [2][7]BitBoard /*piece position by side (0-white, 1-black)

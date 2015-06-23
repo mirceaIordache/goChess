@@ -15,18 +15,24 @@ func ScoreDev(board ChessBoard, side uint16) int {
 				Early Queen move
 	*/
 
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d", ToEPD(board), side)
+
 	score := 0
 	moveBoard := GenerateMoveBoard(board)
 	developed := (board.Board[side][Knight] & nn[side]) | (board.Board[side][Bishop] & bb[side])
 	score = int(NumBits(developed)) * -8
 
 	if board.Castled[side] == true && board.GameCount >= 38 {
+		ChessLogger.Info("Side is castled, game phase advanced, stopping")
+		ChessLogger.Debug("Result %d", score)
 		return score
 	}
 
 	score += SCORE_DEV_NOTCASTLED
 
 	if moveBoard[board.KingPos[side]] > 0 {
+		ChessLogger.Info("King was moved early")
 		score += SCORE_DEV_KINGMOVED
 	}
 
@@ -36,6 +42,7 @@ func ScoreDev(board ChessBoard, side uint16) int {
 		sq := LeadBit(ourRooks)
 		ClearBit(&ourRooks, int(sq))
 		if moveBoard[sq] > 0 {
+			ChessLogger.Info("Rooks were moved early")
 			score += SCORE_DEV_ROOKMOVED
 		}
 	}
@@ -43,6 +50,7 @@ func ScoreDev(board ChessBoard, side uint16) int {
 	if board.Board[side][Queen] != NullBitBoard {
 		sq := LeadBit(board.Board[side][Queen])
 		if moveBoard[sq] > 0 {
+			ChessLogger.Info("Queen was moved early")
 			score += SCORE_QUEEN_EARLYMOVE
 		}
 	}
@@ -53,10 +61,13 @@ func ScoreDev(board ChessBoard, side uint16) int {
 		ClearBit(&developed, int(sq))
 
 		if moveBoard[sq] > 0 {
+			ChessLogger.Info("Pawn early wing move")
 			score += SCORE_PAWN_EARLYWINGMOVE
 		}
 	}
 
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
 	return score
 }
 
@@ -77,8 +88,11 @@ func ScorePawn(board ChessBoard, side uint16) int {
 				Uncatchable passed pawn
 				Pawn storms
 	*/
-
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d", ToEPD(board), side)
 	if board.Board[side][Pawn] == NullBitBoard {
+		ChessLogger.Info("No pawns for given side, exiting")
+		ChessLogger.Debug("Result %d", 0)
 		return 0
 	}
 
@@ -105,12 +119,13 @@ func ScorePawn(board ChessBoard, side uint16) int {
 			}
 		}
 
-		var i uint16
 		backward := false
+
+		var i uint16
 		if side == White {
-			i = sq + 8
+			i = (sq + 8) % 64
 		} else {
-			i = sq - 8
+			i = (sq - 8) % 64
 		}
 
 		if (PassedPawnMask[xside][i] & ^FileBit[sq&7] & ourPawns) == 0 && GenerateCBoard(board)[i] != Pawn {
@@ -124,9 +139,9 @@ func ScorePawn(board ChessBoard, side uint16) int {
 		if backward == false && (BitPosArray[sq]&brank7[xside]) != 0 {
 			i1 := 1
 			if side == White {
-				i += 8
+				i = (i + 8) % 64
 			} else {
-				i -= 8
+				i = (i + 8) % 64
 			}
 			if (PassedPawnMask[xside][i] & ^FileBit[i1&7] & ourPawns) == 0 {
 				n1 := NumBits(ourPawns & MoveArray[PawnType[xside]][i])
@@ -246,6 +261,8 @@ func ScorePawn(board ChessBoard, side uint16) int {
 		}
 	}
 
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
 	return score
 }
 
@@ -257,8 +274,11 @@ func ScoreKnight(board ChessBoard, side uint16, pinnedBoard BitBoard) int {
 				Outpost knight
 				Weak pawn attack (Maybe later?)
 	*/
-
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d", ToEPD(board), side)
 	if board.Board[side][Knight] == NullBitBoard {
+		ChessLogger.Info("No Knights found, exiting")
+		ChessLogger.Debug("Result %d", 0)
 		return 0
 	}
 
@@ -292,6 +312,8 @@ func ScoreKnight(board ChessBoard, side uint16, pinnedBoard BitBoard) int {
 
 	}
 
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
 	return score
 }
 
@@ -305,7 +327,12 @@ func ScoreBishop(board ChessBoard, side uint16, pinnedBoard BitBoard) int {
 				Bishop Pair
 	*/
 
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d", ToEPD(board), side)
+
 	if board.Board[side][Bishop] == NullBitBoard {
+		ChessLogger.Info("No Bishops found, exiting")
+		ChessLogger.Debug("Result %d", 0)
 		return 0
 	}
 
@@ -355,6 +382,10 @@ func ScoreBishop(board ChessBoard, side uint16, pinnedBoard BitBoard) int {
 	if n > 1 {
 		score += SCORE_BISHOP_DOUBLE
 	}
+
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
+
 	return score
 }
 
@@ -365,8 +396,13 @@ func ScoreRook(board ChessBoard, side uint16, pinnedBoard BitBoard) int {
 				Rook on open/half-open file
 				Rook in front/behind passed pawns
 	*/
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d", ToEPD(board), side)
 
 	if board.Board[side][Rook] == NullBitBoard {
+
+		ChessLogger.Info("No Rooks found, exiting")
+		ChessLogger.Debug("Result %d", 0)
 		return 0
 	}
 
@@ -405,17 +441,26 @@ func ScoreRook(board ChessBoard, side uint16, pinnedBoard BitBoard) int {
 
 		score += scoreTemp
 	}
-
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
 	return score
 }
 
 func ScoreQueen(board ChessBoard, side uint16, pinnedBoard BitBoard) int {
 	/* Queen Evaluation Score */
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d", ToEPD(board), side)
 
 	if board.Board[side][Queen] == NullBitBoard {
+
+		ChessLogger.Info("No Bishops found, exiting")
 		if side == board.OurColor {
+
+			ChessLogger.Debug("Result %d", SCORE_QUEEN_ABSENT)
 			return SCORE_QUEEN_ABSENT
 		}
+
+		ChessLogger.Debug("Result %d", 0)
 		return 0
 	}
 
@@ -434,14 +479,14 @@ func ScoreQueen(board ChessBoard, side uint16, pinnedBoard BitBoard) int {
 		ClearBit(&ourQueens, int(sq))
 
 		scoreTemp = ScoreControl(board, sq, side)
-
 		if Distance[sq][enemyKing] <= 2 {
 			scoreTemp += SCORE_QUEEN_NEARKING
 		}
 
 		score += scoreTemp
 	}
-
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
 	return score
 }
 
@@ -456,6 +501,9 @@ func ScoreKing(board ChessBoard, side uint16) int {
 				No Major or Minor piece in king's quadrant
 
 	*/
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d", ToEPD(board), side)
+
 	score := 0
 	xside := 1 ^ side
 	sq := board.KingPos[side]
@@ -562,7 +610,6 @@ func ScoreKing(board ChessBoard, side uint16) int {
 			}
 		}
 
-		/* 1:18 AM. First Energy Drink of the night */
 		if side == board.OurColor {
 			if file >= EFile && board.Board[xside][Queen] != NullBitBoard && board.Board[xside][Rook] != NullBitBoard && (board.Board[side][Pawn]|board.Board[xside][Pawn])&FileBit[7] == NullBitBoard {
 				score += SCORE_KING_HOPEN
@@ -668,13 +715,17 @@ func ScoreKing(board ChessBoard, side uint16) int {
 			}
 		}
 	}
-
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
 	return score
 }
 
 func BishopTrapped(board ChessBoard, side uint16) int {
 	/* Check for trapped bishop at A2/H2/A7/H7 */
 	score := 0
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d", ToEPD(board), side)
+
 	if board.Board[side][Bishop] == NullBitBoard {
 		return score
 	}
@@ -695,6 +746,8 @@ func BishopTrapped(board ChessBoard, side uint16) int {
 			score += SCORE_BISHOP_TRAPPED
 		}
 	}
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
 	return score
 }
 
@@ -719,13 +772,14 @@ func ScorePiece(piece int, board ChessBoard, side uint16, pinnedBoard BitBoard) 
 	case Queen:
 		return ScoreQueen(board, side, pinnedBoard)
 	}
-
 	return 0
 }
 
 func ScoreControl(board ChessBoard, sq uint16, side uint16) int {
 	/* Scoring for control side has on the board */
 	score := 0
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d", ToEPD(board), side)
 
 	enemyKing := board.KingPos[1^side]
 	ourKing := board.KingPos[side]
@@ -743,6 +797,7 @@ func ScoreControl(board ChessBoard, sq uint16, side uint16) int {
 
 	n = NumBits(controlled)
 	score += 4 * int(n)
-
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
 	return score
 }

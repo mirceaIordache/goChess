@@ -47,7 +47,6 @@ func GenerateCBoard(board ChessBoard) [64]uint16 {
 			cboard[sq] = piece
 		}
 	}
-
 	return cboard
 }
 

@@ -1,19 +1,25 @@
 package quiesce
 
 import (
-	"fmt"
 	. "github.com/mirceaIordache/goChess/attack"
 	. "github.com/mirceaIordache/goChess/common"
+	. "github.com/mirceaIordache/goChess/distributed"
 	. "github.com/mirceaIordache/goChess/evaluation"
 	. "github.com/mirceaIordache/goChess/moveGenerator"
 	. "github.com/mirceaIordache/goChess/sort"
+
+	"strconv"
+	"sync"
 )
 
-func Quiesce(board ChessBoard, alpha, beta, depth int) Move {
+func LocalQuiesce(board ChessBoard, alpha, beta, depth int) int {
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, alpha %d, beta %d, depth %d", ToEPD(board), alpha, beta, depth)
 
-	iter := 1
 	if EvaluateDraw(board) == true || depth > MaxPlyDepth {
-		return Move{0, SCORE_DRAW}
+		ChessLogger.Info("Retruning a draw")
+		ChessLogger.Debug("Result %d", SCORE_DRAW)
+		return SCORE_DRAW
 	}
 
 	side := board.Side
@@ -21,28 +27,37 @@ func Quiesce(board ChessBoard, alpha, beta, depth int) Move {
 	InCheck := SquareAttacked(board, board.KingPos[side], xside)
 	best := Evaluate(alpha, beta, board)
 	if best >= beta && InCheck == false {
-
-		return Move{0, best}
+		ChessLogger.Info("Found something above beta")
+		ChessLogger.Debug("Result %d", best)
+		return best
 	}
 
 	var list *MoveList
 
 	if InCheck {
+		ChessLogger.Info("In Check")
 		list = GenerateCheckEscapes(board)
-		FilterMoves(board, list, alpha, beta)
 		if list == nil {
-			return Move{0, -Mate}
+			ChessLogger.Info("No possible escapes")
+			ChessLogger.Debug("Result %d", -Mate)
+			return -Mate
 		}
 		if best >= beta {
-			return Move{0, best}
+			ChessLogger.Info("Found something above beta. In check")
+			ChessLogger.Debug("Result %d", best)
+			return best
 		}
+
 		SortMoves(board, list)
 	} else {
 		list = GenerateCaptures(board)
 		if list == nil {
-			return Move{0, best}
+			ChessLogger.Info("No possible moves")
+			ChessLogger.Debug("Result %d", best)
+			return best
 		}
 		SortCaptures(board, list)
+
 	}
 
 	if best > alpha {
@@ -53,52 +68,113 @@ func Quiesce(board ChessBoard, alpha, beta, depth int) Move {
 		delta = 0
 	}
 
-	var bestMove Move
+	done := make(chan ThreadedStatus, 100)
+	var wg sync.WaitGroup
+	counter := 0
 	for list.Next != nil {
-		verifyIntegrity(list, depth)
-		p := PickBest(&list)
-		if InCheck == false && SwapOff(board, p.Move) < delta {
-			list = list.Next
-			continue
-		}
-
-		if p.Score == -32767 {
-			list = list.Next
-			continue
-		}
-		newBoard := ApplyMove(board, p.Move, side)
-		if SquareAttacked(newBoard, newBoard.KingPos[side], xside) {
-			list = list.Next
-			continue
-		}
-
-		score := -Quiesce(newBoard, -beta, -alpha, depth+1).Score
-		if score > best {
-			best = score
-			bestMove = p
-			if best >= beta {
-				break
-			}
-			if alpha > best {
-				alpha = best
-			}
-		}
+		p := PickBest(list)
 		list = list.Next
-		iter++
+
+		counter += 1
+		ChessLogger.Debug("WG size: %d", counter)
+
+		wg.Add(1)
+		go func(p Move) {
+			ChessLogger.Info("Started a new quiesce goroutine")
+			if InCheck == false && SwapOff(board, p.Move) < delta {
+				ChessLogger.Info("Quiesce Goroutine: Exiting, swap off below delta %d", delta)
+
+				//				ChessLogger.Debug("Quiesce Goroutine: Result: %d", score)
+
+				//				done <- ThreadedStatus{true, score}
+				counter -= 1
+				ChessLogger.Debug("Quiesce Goroutine: WG size: %d", counter)
+
+				wg.Done()
+				return
+			}
+			if p.Score == -Mate {
+				ChessLogger.Info("Quiesce Goroutine: Exiting, move leads to a mate")
+				counter -= 1
+				ChessLogger.Debug("Quiesce Goroutine: WG size: %d", counter)
+
+				wg.Done()
+				return
+			}
+			newBoard := ApplyMove(board, p.Move, side)
+
+			if SquareAttacked(newBoard, newBoard.KingPos[side], xside) {
+
+				ChessLogger.Info("Quiesce Goroutine: Exiting, move leads to a check")
+				counter -= 1
+				ChessLogger.Debug("Quiesce Goroutine: WG size: %d", counter)
+
+				wg.Done()
+				return
+			}
+			score := -Quiesce(newBoard, -beta, -alpha, depth+1)
+			if score > best {
+				if score >= beta {
+					ChessLogger.Info("Quiesce Goroutine: Exiting, found something above beta")
+					ChessLogger.Debug("Quiesce Goroutine: Result: %d", score)
+
+					done <- ThreadedStatus{true, score}
+					counter -= 1
+					ChessLogger.Debug("Quiesce Goroutine: WG size: %d", counter)
+
+					wg.Done()
+					return
+				}
+				if alpha > best {
+					alpha = score
+				}
+			}
+			done <- ThreadedStatus{true, score}
+
+			counter -= 1
+			ChessLogger.Info("No good result obtained, sending %d", score)
+			ChessLogger.Debug("Quiesce Goroutine: WG size: %d", counter)
+
+			wg.Done()
+		}(p)
 	}
-	return bestMove
+	//	println("LocalQuiesce: ", ToEPD(board), alpha, beta, "  Result: ", sentinel.Value)
+	wg.Wait()
+	maxValue := -Mate
+	ChessLogger.Info("Woke up from quiesce goroutines")
+
+	sentinel := true
+	for sentinel {
+		select {
+		case val := <-done:
+			{
+				if val.Status && val.Value > maxValue {
+					maxValue = val.Value
+				}
+			}
+		default:
+			{
+				sentinel = false
+			}
+
+		}
+	}
+
+	if best > maxValue {
+		maxValue = best
+	}
+
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", maxValue)
+	return maxValue
 }
 
-func verifyIntegrity(iter *MoveList, depth int) {
-	for iter.Next != nil {
-		//fmt.Println(iter.Value)
+func Quiesce(board ChessBoard, alpha, beta, depth int) int {
+	ChessLogger.Info("Going through proxy")
+	res := LocalQuiesce(board, alpha, beta, depth)
+	ChessLogger.Info("Proxy sent result")
+	ChessLogger.Debug("Result %d", res)
+	return res
+	return RunRemote([]string{"Quiesce", "\"" + ToEPD(board) + "\"", strconv.Itoa(alpha), strconv.Itoa(beta), strconv.Itoa(depth)})
 
-		if iter.Next == iter {
-			fmt.Println("Depth: ", depth)
-			panic("Circular ")
-		}
-		iter = iter.Next
-	}
-	//	fmt.Println("Integrity  OK")
-	//	fmt.Println("---------------------")
 }

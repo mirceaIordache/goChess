@@ -131,8 +131,9 @@ var Values = [...]uint16{0, 100, 350, 350, 550, 1100, 2000, 0}
 /* Node Types */
 const (
 	PV  = iota
-	ALL = iota
 	CUT = iota
+	ALL = iota
+	
 )
 
 /* castling flags */

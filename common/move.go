@@ -43,6 +43,9 @@ func MakeMove(board ChessBoard, move int, side uint16, null bool) ChessBoard {
 	fromPiece := cboard[from]
 	toPiece := cboard[to]
 
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, From %s to %s, side %d, null move %t", ToEPD(board), Algebraic[MoveFrom(move)], Algebraic[MoveTo(move)], side, null)
+
 	moveBitBoard := &newBoard.Board[side][fromPiece]
 	ClearBit(moveBitBoard, int(from))
 	SetBit(moveBitBoard, int(to))
@@ -158,6 +161,9 @@ func MakeMove(board ChessBoard, move int, side uint16, null bool) ChessBoard {
 	newBoard.Friends[White] = newBoard.Board[White][Pawn] | newBoard.Board[White][Knight] | newBoard.Board[White][Bishop] | newBoard.Board[White][Rook] | newBoard.Board[White][Queen] | newBoard.Board[White][King]
 	newBoard.Friends[Black] = newBoard.Board[Black][Pawn] | newBoard.Board[Black][Knight] | newBoard.Board[Black][Bishop] | newBoard.Board[Black][Rook] | newBoard.Board[Black][Queen] | newBoard.Board[Black][King]
 	newBoard.Blocker = newBoard.Friends[White] | newBoard.Friends[Black]
+
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %s", ToEPD(newBoard))
 
 	return newBoard
 }

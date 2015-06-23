@@ -4,10 +4,15 @@ import . "github.com/mirceaIordache/goChess/common"
 
 func LoneKing(board ChessBoard, side, loser uint16) int {
 	/* Lone King scenario */
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d, loser %d", ToEPD(board), side, loser)
 	winner := loser ^ 1
 
 	if board.Material[winner] == ValueBishop+ValueKnight && NumBits(board.Board[winner][Bishop]) == 1 && NumBits(board.Board[winner][Knight]) == 1 {
-		return ScoreKBNK(board, side, loser)
+		ChessLogger.Info("KBNK Detected")
+		res := ScoreKBNK(board, side, loser)
+		ChessLogger.Debug("Result %d", res)
+		return res
 	}
 
 	squareWinner := board.KingPos[winner]
@@ -19,12 +24,15 @@ func LoneKing(board ChessBoard, side, loser uint16) int {
 	}
 	score += CalculateMaterial(board)
 
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
 	return score
 }
 
 func ScoreKBNK(board ChessBoard, side, loser uint16) int {
 	/* KBNK scoring. Based on GNU Chess implementation */
-
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d, loser %d", ToEPD(board), side, loser)
 	winner := loser ^ 1
 	squareB := board.KingPos[loser]
 	if board.Board[winner][Bishop]&WhiteSquares != NullBitBoard {
@@ -50,5 +58,7 @@ func ScoreKBNK(board ChessBoard, side, loser uint16) int {
 
 	score += CalculateMaterial(board)
 
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", score)
 	return score
 }

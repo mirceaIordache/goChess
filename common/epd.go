@@ -7,18 +7,15 @@ import (
 
 /** Used in serializing data to send over the network */
 func ToEPD(board ChessBoard) string {
-	//	fmt.Printf("Entered toEPD\n")
 	var r, c, sq, k int
 	var buffer bytes.Buffer
 
-	//	fmt.Printf("Generating CBoard\n")
 	cboard := GenerateCBoard(board)
 
 	for r = A8; r >= A1; r -= 8 {
 		k = 0
 		for c = 0; c < 8; c++ {
 			sq = r + c
-			//fmt.Printf("SQ: %d\n", sq)
 
 			if cboard[sq] == Empty {
 				k++
@@ -179,8 +176,6 @@ func FromEPD(boardString string) ChessBoard {
 
 		if r < 0 || c > 8 {
 			/* something went wrong */
-			fmt.Printf("r: %d, c: %d\n", r, c)
-
 			board = &ChessBoard{}
 			return *board
 		}

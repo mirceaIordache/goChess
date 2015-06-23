@@ -3,6 +3,8 @@ package evaluation
 import . "github.com/mirceaIordache/goChess/common"
 
 func HungPieces(board ChessBoard, side uint16, attackBoard [2][7]BitBoard) int {
+	ChessLogger.Info("Entering")
+	ChessLogger.Debug("Board %s, side %d", ToEPD(board), side)
 	xside := 1 ^ side
 	hunged := 0
 
@@ -28,13 +30,17 @@ func HungPieces(board ChessBoard, side uint16, attackBoard [2][7]BitBoard) int {
 	c := n | b | r | q
 
 	if c != 0 {
+		ChessLogger.Info("Found some hung pieces")
 		hunged = int(NumBits(c))
 	}
 
 	/* King */
 	if attackBoard[xside][0]&board.Board[side][King] != 0 {
+		ChessLogger.Info("King is hung")
 		hunged++
 	}
 
+	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Result %d", hunged)
 	return hunged
 }
