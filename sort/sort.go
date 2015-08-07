@@ -15,7 +15,7 @@ func SortMoves(board ChessBoard, list *MoveList) {
 	enemyPawns := board.Board[xside][Pawn]
 	iter := list
 	cboard := GenerateCBoard(board)
-
+	counter := 0
 	baseEval := Evaluate(-Mate, Mate, board)
 
 	for iter.Next != nil {
@@ -34,10 +34,13 @@ func SortMoves(board ChessBoard, list *MoveList) {
 			}
 		}
 
+		counter += 1
+		ChessLogger.Debug("Move score is %d", iter.Value.Score)
 		iter = iter.Next
 	}
 
 	ChessLogger.Info("Exiting")
+	ChessLogger.Debug("Evaluated %d potential moves", counter)
 }
 
 func SortCaptures(board ChessBoard, list *MoveList) {

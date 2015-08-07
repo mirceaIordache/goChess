@@ -18,7 +18,7 @@ var version string
 func main() {
 	init_Logger(false, true)
 
-	ChessLogger.Debug("goChess version 1.0 started", version)
+	ChessLogger.Debug("goChess version %s started", version)
 
 	switch len(os.Args) {
 	//initial invocation

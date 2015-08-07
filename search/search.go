@@ -21,7 +21,8 @@ func SetBest(best int) {
 
 func SearchRoot(board ChessBoard, iterationDepth, alpha, beta int) Move {
 
-	var score int
+	score := alpha
+	var list *MoveList
 	ChessLogger.Info("Entering")
 	ChessLogger.Debug("Board %s, depth %d, alpha %d, beta %d", ToEPD(board), iterationDepth, alpha, beta)
 	side := board.Side
@@ -29,10 +30,22 @@ func SearchRoot(board ChessBoard, iterationDepth, alpha, beta int) Move {
 	firstMove := true
 	nodeType := PV
 	bestMove := Move{}
-	list := GenerateMoves(board)
-	FilterMoves(board, list)
-	SortMoves(board, list)
+
+	inCheck := SquareAttacked(board, board.KingPos[side], 1^side)
+	if inCheck == true {
+		list = GenerateCheckEscapes(board)
+		if list.Next == nil {
+			ChessLogger.Info("Mate. Exiting")
+			ChessLogger.Debug("103: Result %d", Mate)
+			return Move{0, -Mate}
+		}
+	} else {
+		list = GenerateMoves(board)
+		FilterMoves(board, list)
+	}
 	iter := list
+
+	SortMoves(board, list)
 
 	for iter.Next != nil {
 		p := PickBest(iter)

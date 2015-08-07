@@ -486,8 +486,8 @@ func GenerateCheckEscapes(board ChessBoard) *MoveList {
 	/* Generate moves that would get the king out of check */
 	ChessLogger.Info("Entering")
 	ChessLogger.Debug("Board %s", ToEPD(board))
-	var tail *MoveList = &MoveList{nil, Move{}}
-	head := tail
+	var head *MoveList = &MoveList{nil, Move{}}
+	tail := head
 
 	side := board.Side
 	xside := 1 ^ side
@@ -537,7 +537,7 @@ func GenerateCheckEscapes(board ChessBoard) *MoveList {
 
 		/* Block or capture checking piece */
 		if Slider[cboard[checkSq]] == 1 {
-			throwAway := FromToRay[kingSq][checkSq] & NotBitPosArray[checkSq]
+			throwAway := FromToRay[63-kingSq][63-checkSq] & NotBitPosArray[checkSq]
 			for throwAway != NullBitBoard {
 				sq := LeadBit(throwAway)
 				ClearBit(&throwAway, int(sq))
@@ -553,14 +553,17 @@ func GenerateCheckEscapes(board ChessBoard) *MoveList {
 						attackers |= BitPosArray[sq-16]
 					}
 				}
-				if side == Black && sq > H7 {
+
+				if side == Black && sq < A7 {
 					if BitPosArray[sq+8]&ourPawns != NullBitBoard {
 						attackers |= BitPosArray[sq+8]
 					}
+
 					if sq>>3 == 4 && cboard[sq+8] == Empty && BitPosArray[sq+16]&ourPawns != NullBitBoard {
 						attackers |= BitPosArray[sq+16]
 					}
 				}
+
 				for attackers != NullBitBoard {
 					sq1 := LeadBit(attackers)
 					ClearBit(&attackers, int(sq1))

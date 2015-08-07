@@ -85,20 +85,17 @@ func AttackTo(board ChessBoard, sq, side uint16) BitBoard {
 	attacker := board.Board[side]
 
 	result |= (attacker[Knight] & MoveArray[Knight][sq])
-
 	result |= (attacker[King] & MoveArray[King][sq])
+	result |= (attacker[Pawn] & MoveArray[PawnType[side]][sq])
 
-	result |= (attacker[Pawn] & MoveArray[PawnType[1^side]][sq])
-
-	ray := FromToRay[sq]
+	ray := FromToRay[63-sq]
 	blocker := board.Blocker
 
 	throwAway := (attacker[Bishop] | attacker[Queen]) & MoveArray[Bishop][sq]
-
 	for throwAway != NullBitBoard {
 		sq1 := LeadBit(throwAway)
 		ClearBit(&throwAway, int(sq1))
-		if ray[sq1]&blocker&NotBitPosArray[sq1] == NullBitBoard {
+		if ray[63-sq1]&blocker&NotBitPosArray[sq1] == NullBitBoard {
 			result |= BitPosArray[sq1]
 		}
 	}
@@ -107,7 +104,7 @@ func AttackTo(board ChessBoard, sq, side uint16) BitBoard {
 	for throwAway != NullBitBoard {
 		sq1 := LeadBit(throwAway)
 		ClearBit(&throwAway, int(sq1))
-		if ray[sq1]&blocker&NotBitPosArray[sq1] == NullBitBoard {
+		if ray[63-sq1]&blocker&NotBitPosArray[sq1] == NullBitBoard {
 			result |= BitPosArray[sq1]
 		}
 	}
@@ -183,7 +180,7 @@ func GenerateAttacks(board ChessBoard) [2][7]BitBoard {
 	}
 
 	ChessLogger.Info("Exiting")
-	ChessLogger.Debug("Result is %q", result[0:][0:])
+	ChessLogger.Debug("Result is %064b", result[0:][0:])
 	return result
 }
 
@@ -340,27 +337,27 @@ func PinnedOnKing(board ChessBoard, sq, side uint16) bool {
 
 func SquareAttacked(board ChessBoard, sq, side uint16) bool {
 	ChessLogger.Info("Entering")
-	ChessLogger.Debug("Board %s, sq %d, side %d", ToEPD(board), sq, side)
+	ChessLogger.Debug("Board %s, sq %s, side %d", ToEPD(board), Algebraic[sq], side)
 	attacker := board.Board[side]
 	if attacker[Knight]&MoveArray[Knight][sq] != NullBitBoard {
-		ChessLogger.Info("Exiting")
+		ChessLogger.Info("Attacked by Knight. Exiting")
 		ChessLogger.Debug("Result %t", true)
 		return true
 	}
 
 	if attacker[King]&MoveArray[King][sq] != NullBitBoard {
-		ChessLogger.Info("Exiting")
+		ChessLogger.Info("Attacked by King. Exiting")
 		ChessLogger.Debug("Result %t", true)
 		return true
 	}
 
 	if attacker[Pawn]&MoveArray[PawnType[1^side]][sq] != NullBitBoard {
-		ChessLogger.Info("Exiting")
+		ChessLogger.Info("Attacked by Pawn. Exiting")
 		ChessLogger.Debug("Result %t", true)
 		return true
 	}
 
-	ray := FromToRay[sq]
+	ray := FromToRay[63-sq]
 	blocker := board.Blocker
 
 	bishops := (attacker[Bishop] | attacker[Queen]) & MoveArray[Bishop][sq]
@@ -368,21 +365,21 @@ func SquareAttacked(board ChessBoard, sq, side uint16) bool {
 
 	for bishops != NullBitBoard {
 		sq1 := LeadBit(bishops)
-		if ray[sq1]&deny == NullBitBoard {
-			ChessLogger.Info("Exiting")
+		if ray[63-sq1]&deny == NullBitBoard {
+			ChessLogger.Info("Attacked by Bishop or Queen at %s. Exiting", Algebraic[sq1])
 			ChessLogger.Debug("Result %t", true)
 			return true
 		}
 		ClearBit(&bishops, int(sq1))
 	}
 
-	rooks := (attacker[Rook] | attacker[Queen]) & MoveArray[Rook][sq]
+	rooks := (attacker[Rook] | attacker[Queen]) & MoveArray[Rook][63-sq]
 	deny = ^rooks & blocker
 
 	for rooks != NullBitBoard {
 		sq1 := LeadBit(rooks)
-		if ray[sq1]&deny == NullBitBoard {
-			ChessLogger.Info("Exiting")
+		if ray[63-sq1]&deny == NullBitBoard {
+			ChessLogger.Info("Attacked by Rook or Queen. Exiting")
 			ChessLogger.Debug("Result %t", true)
 			return true
 		}
